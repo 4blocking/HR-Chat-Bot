@@ -19,7 +19,6 @@ class ModelResponse(BaseModel):
 
 def generate_response(model, prompt, conversation_id):
     """
-
     Generate a response using OpenAI API with Structured Outputs.
 
     Args:
