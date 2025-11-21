@@ -55,4 +55,3 @@ async def conversation_history(user = Depends(get_current_user) ,db: AsyncSessio
 @router.get("/me")
 async def get_me(user = Depends(get_current_user)):
     return {"decision": user.decision}
-
