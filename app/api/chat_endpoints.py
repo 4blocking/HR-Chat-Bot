@@ -8,14 +8,29 @@ from app.services.chat_service import process_chat_query
 from app.repositories.chat_repository import save_conversation,get_conversation_history
 from pydantic import BaseModel
 import asyncio
+import time
+import csv
+import os
 
 from scripts.send_email import send_email
+from scripts.save_csv import save_csv
 
 router = APIRouter()
 
 # Request model
 class ChatRequest(BaseModel):
     query: str
+
+
+
+def log_response_time(duration: float):
+    """Append only response time (seconds) to a CSV file in project directory."""
+    csv_path = os.path.join(os.getcwd(), "response_times.csv")
+
+    with open(csv_path, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([round(duration, 3)])
+
 
 # Chatbot endpoint
 @router.post("/chat")
@@ -24,6 +39,7 @@ async def chat(request: ChatRequest,
                db: AsyncSession = Depends(get_db)):
     """Handles chatbot queries and returns AI-generated responses.
     """
+    start_time = time.perf_counter()
     if user.decision in ("1", "0"):
         raise HTTPException(
             status_code=403,
@@ -37,8 +53,14 @@ async def chat(request: ChatRequest,
     if response.decision !="N/A":
         await save_applicant_decision(db,user.id,response.decision)
         send_email(user.email, response.decision, user.username)
+        print(type(response.decision))
+        if response.decision == "1":
+            save_csv(user.email, user.username)
     await save_conversation(db, request.query, response.response, user.id)
 
+    end_time = time.perf_counter()  # stop timing
+    duration = end_time - start_time
+    log_response_time(duration)
     return {
         "message": response.response,
         "decision": response.decision
